@@ -1,0 +1,17 @@
+import multiprocessing
+import time
+
+def tarefa(n):
+    print(f"Iniciando tarefa {n}")
+    time.sleep(2)
+    print(f"Finalizando tarefa {n}")
+
+if __name__ == "__main__":
+    processos = []
+    for i in range(4):  # Criamos 4 processos paralelos
+        p = multiprocessing.Process(target=tarefa, args=(i,))
+        processos.append(p)
+        p.start()
+
+    for p in processos:
+        p.join()
