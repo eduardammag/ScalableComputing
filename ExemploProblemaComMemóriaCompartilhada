@@ -1,0 +1,18 @@
+import threading
+
+contador = 0
+
+def incrementar():
+    global contador
+    for _ in range(100000):
+        contador += 1  # Pode causar condições de corrida!
+
+t1 = threading.Thread(target=incrementar)
+t2 = threading.Thread(target=incrementar)
+
+t1.start()
+t2.start()
+t1.join()
+t2.join()
+
+print("Valor final:", contador)  # Pode ser inconsistente!
