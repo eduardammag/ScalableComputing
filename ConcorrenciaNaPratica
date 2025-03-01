@@ -1,0 +1,16 @@
+import asyncio
+
+async def tarefa1():
+    print("Iniciando tarefa 1")
+    await asyncio.sleep(2)  # Simula uma operação demorada
+    print("Finalizando tarefa 1")
+
+async def tarefa2():
+    print("Iniciando tarefa 2")
+    await asyncio.sleep(1)  # Outra operação demorada
+    print("Finalizando tarefa 2")
+
+async def main():
+    await asyncio.gather(tarefa1(), tarefa2())  # Executa as tarefas de forma concorrente
+
+asyncio.run(main())
