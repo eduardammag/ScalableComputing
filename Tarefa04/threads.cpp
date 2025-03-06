@@ -6,11 +6,11 @@
 #include <mutex>
 #include <chrono>
 #include <string>
+#include <fstream>
 
 using namespace std;
 
 // Variáveis globais
-int num_threads = 4; // Número padrão de threads
 int expansion_factor = 1; // Fator de multiplicação do texto
 mutex mtx; // Mutex para sincronização das threads
 
@@ -37,17 +37,7 @@ void threadTask(const string& text, int start, int end, int& countLove, int& cou
     countHate += localHate;
 }
 
-int main(int argc, char* argv[]) {
-    if (argc > 1) {
-        num_threads = stoi(argv[1]); // Define o número de threads a partir do argumento
-    }
-    if (argc > 2) {
-        expansion_factor = stoi(argv[2]); // Define o fator de expansão do texto
-    }
-    
-    // Inicia a medição do tempo de preparação
-    auto startPreparation = chrono::high_resolution_clock::now();
-    
+int main() {
     // Carregar o arquivo de texto
     ifstream file("shakespeare.txt");
     if (!file) {
@@ -66,51 +56,55 @@ int main(int argc, char* argv[]) {
         text += original_text;
     }
 
-    // Divide o texto em partes para cada thread
-    int textLength = text.size();
-    int blockSize = textLength / num_threads;
-    
-    // Fim da medição do tempo de preparação
-    auto endPreparation = chrono::high_resolution_clock::now();
-    
-    // Inicia a medição do tempo de execução
-    auto startExecution = chrono::high_resolution_clock::now();
-    
-    // Contadores globais para as palavras
-    int totalLove = 0, totalHate = 0;
-    vector<thread> threads;
-    
-    // Criar e iniciar as threads
-    for (int i = 0; i < num_threads; i++) {
-        int start = i * blockSize;
-        int end = (i == num_threads - 1) ? textLength : (i + 1) * blockSize;
-        threads.emplace_back(threadTask, cref(text), start, end, ref(totalLove), ref(totalHate));
+    // Variáveis para armazenar os resultados
+    ofstream resultFile("execution_times.csv");
+    resultFile << "NumThreads,TotalTime,SearchTime\n"; // Cabeçalho do arquivo CSV
+
+    // Executa o programa com diferentes números de threads
+    for (int num_threads = 1; num_threads <= 20; num_threads++) {
+        // Divide o texto em partes para cada thread
+        int textLength = text.size();
+        int blockSize = textLength / num_threads;
+
+        // Medição do tempo de preparação
+        auto startPreparation = chrono::high_resolution_clock::now();
+        
+        // Inicia a medição do tempo de execução
+        auto startExecution = chrono::high_resolution_clock::now();
+
+        // Contadores globais para as palavras
+        int totalLove = 0, totalHate = 0;
+        vector<thread> threads;
+        
+        // Criar e iniciar as threads
+        for (int i = 0; i < num_threads; i++) {
+            int start = i * blockSize;
+            int end = (i == num_threads - 1) ? textLength : (i + 1) * blockSize;
+            threads.emplace_back(threadTask, cref(text), start, end, ref(totalLove), ref(totalHate));
+        }
+        
+        // Aguarda todas as threads terminarem
+        for (auto& t : threads) {
+            t.join();
+        }
+
+        // Fim da medição do tempo de execução
+        auto endExecution = chrono::high_resolution_clock::now();
+
+        // Cálculo dos tempos
+        auto preparationTime = chrono::duration<double>(startExecution - startPreparation).count();
+        auto executionTime = chrono::duration<double>(endExecution - startExecution).count();
+        auto totalTime = preparationTime + executionTime;
+
+        // Escrever os tempos no arquivo CSV
+        resultFile << num_threads << "," << totalTime << "," << executionTime << "\n";
+        
+        // Exibir resultados
+        cout << "Número de threads: " << num_threads << endl;
+        cout << "Tempo total: " << totalTime << " segundos" << endl;
+        cout << "Tempo de execução (pesquisa): " << executionTime << " segundos" << endl;
     }
-    
-    // Aguarda todas as threads terminarem
-    for (auto& t : threads) {
-        t.join();
-    }
-    
-    // Fim da medição do tempo de execução
-    auto endExecution = chrono::high_resolution_clock::now();
-    
-    // Cálculo dos tempos
-    auto preparationTime = chrono::duration<double>(endPreparation - startPreparation).count();
-    auto executionTime = chrono::duration<double>(endExecution - startExecution).count();
-    auto totalTime = preparationTime + executionTime;
-    
-    // Exibir resultados
-    cout << "Número de threads: " << num_threads << endl;
-    cout << "Fator de expansão: " << expansion_factor << endl;
-    cout << "Tamanho final do texto: " << textLength << " caracteres" << endl;
-    cout << "Tamanho do bloco por thread: " << blockSize << " caracteres" << endl;
-    cout << "Tempo de preparação: " << preparationTime << " segundos" << endl;
-    cout << "Tempo de execução: " << executionTime << " segundos" << endl;
-    cout << "Tempo total: " << totalTime << " segundos" << endl;
-    cout << "Ocorrências de 'love': " << totalLove << endl;
-    cout << "Ocorrências de 'hate': " << totalHate << endl;
-    cout << "Palavra mais frequente: " << (totalLove > totalHate ? "love" : "hate") << endl;
-    
+
+    resultFile.close();
     return 0;
 }
